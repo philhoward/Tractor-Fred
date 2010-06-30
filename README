@@ -1,0 +1,16 @@
+Tractor Fred 
+
+by Philip W. Howard
+
+Tractor Fred is an open source open hardware electronic throttle governor for tractors. It has features similar to cruise control for an automobile. These features include:
+
+1.	Inexpensive, easy to build-at-home hardware
+2.	Runs off 12V positive or negative ground power
+3.	Simple connections for tach pulse pickup on gasoline engines
+4.	Selectable and tunable throttle control algorithms
+5.	Throttle settings from idle to full power for any RPM setting
+
+Key words: tractor, governor, cruise control, throttle control, speed control
+
+git@github.com:philhoward/Tractor-Fred.git
+

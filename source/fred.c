@@ -32,10 +32,17 @@ void main()
 	Init();                              //Initialize 12F629 Microcontroller
 	while(1)                             //Loop Forever
 	{	
-		Delay(ontime);
-		Led1();
-		Delay(offtime);
-		Led2();
+		//Delay(ontime);
+		//Led1();
+		//Delay(offtime);
+		//Led2();
+		
+		if (TMR0 > ontime) 
+		//if (TMR1L & 0x20) //  ontime) 
+		   Led1();
+		else
+		   Led2();
+	
 		
 		/*
 		if (ontime & 0x01) Led1();
@@ -73,17 +80,18 @@ void Init()
 	VRCON = CLEAR;                       //Turn Off Voltage Reference Peripheral
 	CMCON = 0x07;                        //Turn Off Comparator Peripheral
 	TMR0 = CLEAR;                        //Clear Timer0
-	OPTION = 0x80;
+	OPTION = 0x85; //0x80;				// pull ups disabled, prescaler = 5
 	ANSEL = 0x31;						 //RA0 Analog Input
 	ADCON0 = 0x01;
 	//IOCB3 = SET;                         //GP3 Interrupt On Pin Changed Enabled
 	//GPIE = SET;                          //Interrupt On Pin Change Enabled
-	//T0IE = SET;                          //Timer0 Overflow Interrupt Enabled
+	T0IF = CLEAR;                        //Clear Timer0 Overflow Interrupt Flag
+	T0IE = SET;                          //Timer0 Overflow Interrupt Enabled
 	//ADIE = SET;
 	//ADIF = CLEAR;
-	//T0IF = CLEAR;                        //Clear Timer0 Overflow Interrupt Flag
 	//GPIF = CLEAR;                        //Clear Interrupt On Pin Change Flag
 	//GIE = SET;                           //Enable All Interrupts
+	T1CON = 0x05;						// Timer1 enabled, PS=0
 
 	ontime = 0;
 	offtime = 255;
@@ -195,14 +203,22 @@ void Delay(char value)
 //***************************************************************************
 void interrupt Isr()
 {
-/*
+
 	if ((T0IE & T0IF) == SET)			  //If A Timer0 Interrupt, Then
 	{
-		Display();						  //Update LED Array
-		GODONE = 1;						  //Start an A/D Conversion
+		if (led1on != 0)
+		{
+		    Led2();
+		    led1on = 0;
+		} else {
+		    Led1();
+		    led1on = 1;
+		}
+		//Display();						  //Update LED Array
+		//GODONE = 1;						  //Start an A/D Conversion
 		T0IF = CLEAR;                     //Clear Timer0 Interrupt Flag
 	}
-	
+/*	
 	if ((GPIE & GPIF) == SET)					  //If A GP3 Pin-Change Interrupt
 	{
 		if (Debounce() == TRUE)     		 //Debounce Pushbutton

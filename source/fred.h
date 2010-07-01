@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#ifndef TEST_H
-#define TEST_H
+#ifndef FRED_H
+#define FRED_H
 
 #include <pic.h>
 #include <pic12f6x.h>
@@ -65,6 +65,7 @@ __CONFIG(INTIO & WDTDIS & MCLRDIS & BORDIS & UNPROTECT & PWRTEN);
 unsigned char inner,outer;
 unsigned char ontime;
 unsigned char offtime;
+unsigned char led1on;
 
 //Function Prototypes
 void Init();

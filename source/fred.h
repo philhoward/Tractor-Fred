@@ -66,6 +66,7 @@ unsigned char inner,outer;
 unsigned char ontime;
 unsigned char offtime;
 unsigned char led1on;
+unsigned char value;
 
 //Function Prototypes
 void Init();

@@ -67,6 +67,8 @@ unsigned char ontime;
 unsigned char offtime;
 unsigned char led1on;
 unsigned char value;
+#define MAX_SERVO_STATE 40
+unsigned char servo_state;
 
 //Function Prototypes
 void Init();

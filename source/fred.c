@@ -55,6 +55,8 @@ void main()
 	//TMR1IE = 1;
 	PEIE = 1;
 	GIE = 1;
+	
+	TRISIO = 0xFD;						// RA0 is input for POT; RA1 is output for servo
 	//************* Init Done *******************
 		
 	while(1)                             //Loop Forever
@@ -66,8 +68,8 @@ void main()
 		
 		if (servo_state == 1)
 		{
-			if (TMR0 >= ontime) Led2();
-		}
+			if (TMR0 >= ontime) GPIO1 = 0;
+		} 
 				
 		/*
 		if (TMR1IF)
@@ -247,6 +249,7 @@ void Delay(char value)
 //***************************************************************************
 void interrupt Isr()
 {
+/*
 	if (TMR1IF)
 	{
 	    if (led1on)
@@ -259,13 +262,14 @@ void interrupt Isr()
 	    }
         TMR1IF = 0;
 	}
+*/
 	
 	if (T0IF)			  //If A Timer0 Interrupt, Then
 	{
 	    if (servo_state >= MAX_SERVO_STATE) 
 	    {
 	    	servo_state = 0;
-	    	Led1();
+	    	GPIO1 = 1;
 	    }
 	    else
 	    {

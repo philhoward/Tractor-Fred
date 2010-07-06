@@ -61,6 +61,8 @@ __CONFIG(INTIO & WDTDIS & MCLRDIS & BORDIS & UNPROTECT & PWRTEN);
 #define	FALSE			0
 #define FORWARD			0
 
+#define AN_START 		0x0F
+
 //Global Variable Declarations
 unsigned char inner,outer;
 unsigned char ontime;

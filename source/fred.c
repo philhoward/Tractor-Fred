@@ -36,8 +36,8 @@ void main()
 	CMCON = 0x07;                        //Turn Off Comparator Peripheral
 
 	OPTION = 0x81;       				// pull ups disabled, prescaler = 5
-	ANSEL = 0x31;						 //RA0 Analog Input
-	ADCON0 = 0x01;
+	ANSEL = 0x39;						 //RA4 Analog Input
+	ADCON0 = AN_START;
 	
 	TMR0 = CLEAR;                        //Clear Timer0
 	T0IF = CLEAR;                        //Clear Timer0 Overflow Interrupt Flag
@@ -64,7 +64,7 @@ void main()
 		{
 			ontime = ADRESH;
 			offtime = 255-ontime;
-			ADCON0 = 0x03;
+			ADCON0 = AN_START;
 		} 
 	}
 }

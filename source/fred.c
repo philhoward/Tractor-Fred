@@ -39,57 +39,27 @@ void main()
 	ANSEL = 0x31;						 //RA0 Analog Input
 	ADCON0 = 0x01;
 	
-	//IOCB3 = SET;                         //GP3 Interrupt On Pin Changed Enabled
-	//GPIE = SET;                          //Interrupt On Pin Change Enabled
 	TMR0 = CLEAR;                        //Clear Timer0
 	T0IF = CLEAR;                        //Clear Timer0 Overflow Interrupt Flag
 	T0IE = SET;                          //Timer0 Overflow Interrupt Enabled
-	//ADIE = SET;
-	//ADIF = CLEAR;
-	//GPIF = CLEAR;                        //Clear Interrupt On Pin Change Flag
-	//GIE = SET;                           //Enable All Interrupts
 	//TMR1L = 0;
 	//TMR1H = 0;
-	
 	//T1CON = 0x35;						// Timer1 enabled, PS=3
 	//TMR1IE = 1;
 	PEIE = 1;
 	GIE = 1;
 	
-	TRISIO = 0xFD;						// RA0 is input for POT; RA1 is output for servo
+	TRISIO = 0xFD;						// RA0 is input for POT; 
+	                                    // RA1 is output for servo
 	//************* Init Done *******************
 		
 	while(1)                             //Loop Forever
 	{	
-		//Delay(ontime);
-		//Led1();
-		//Delay(offtime);
-		//Led2();
-		
 		if (servo_state == 1)
 		{
 			if (TMR0 >= ontime) GPIO1 = 0;
 		} 
-				
-		/*
-		if (TMR1IF)
-		{
-		    value++;
-		    TMR1IF = 0;
-		}
-		*/
-		//value = TMR1H;
-		/*
-		if (value & 0x01) Led1();
-		if (value & 0x02) Led2();
-		if (value & 0x04) Led3();
-		if (value & 0x08) Led4();
-		if (value & 0x10) Led5();
-		if (value & 0x20) Led6();
-		if (value & 0x40) Led7();
-		if (value & 0x80) Led8();
-		*/
-		
+					
 		if ((ADCON0 & 0x02) == 0)
 		{
 			ontime = ADRESH;

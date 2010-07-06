@@ -35,7 +35,7 @@ void main()
 	VRCON = CLEAR;                       //Turn Off Voltage Reference Peripheral
 	CMCON = 0x07;                        //Turn Off Comparator Peripheral
 
-	OPTION = 0x85;       				// pull ups disabled, prescaler = 5
+	OPTION = 0x81;       				// pull ups disabled, prescaler = 5
 	ANSEL = 0x31;						 //RA0 Analog Input
 	ADCON0 = 0x01;
 	
@@ -241,8 +241,9 @@ void interrupt Isr()
 	    	servo_state = 0;
 	    	GPIO1 = 1;
 	    }
-	    else
+	    else 
 	    {
+	        if (servo_state > 1) GPIO1 = 0;
 		    servo_state++;
 		}
 		

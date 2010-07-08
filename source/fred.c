@@ -22,7 +22,32 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#include "fred.h"
+#include <pic.h>
+#include <pic12f6x.h>
+
+// ***************** Processor Init ****************************************
+__IDLOC(1);
+__CONFIG(INTIO & WDTDIS & MCLRDIS & BORDIS & UNPROTECT & PWRTEN);
+
+// ********************* constants ***************************
+#define MAX_SERVO_STATE 15
+#define AN_START 		0x03 /* 0x0F */
+#define SERVO			0x02 /* GPIO1 */
+#define LED				0x20 /* GPIO5 */
+
+
+//****************** variables *******************************
+unsigned char ontime;
+unsigned char offtime;
+unsigned char gpio_state;
+unsigned char value;
+unsigned char servo_state;
+unsigned char gpio5on;
+
+// ****************** macros to set/clear GPIO *****************
+// setting individual bits doesn't seem to work
+#define GPIOSET(v) gpio_state|=v; GPIO=gpio_state
+#define GPIOCLR(v) gpio_state&=(~v); GPIO=gpio_state
 
 //***************************************************************************
 //Main() - Main Routine
@@ -31,8 +56,8 @@ void main()
 {
 	//************* Init *******************
 	TRISIO = 0xFF;                       //Set All I/O's As Inputs
-	GPIO = CLEAR;                        //Clear GPIO
-	VRCON = CLEAR;                       //Turn Off Voltage Reference Peripheral
+	GPIO = 0;                        	//Clear GPIO
+	VRCON = 0;                       	//Turn Off Voltage Reference Peripheral
 	CMCON = 0x07;                        //Turn Off Comparator Peripheral
 
 	//WPU = 0x04;							// pull up RA2
@@ -41,9 +66,9 @@ void main()
 	ANSEL = 0x39;						 //RA0, RA3 Analog Input
 	ADCON0 = AN_START;
 	
-	TMR0 = CLEAR;                        //Clear Timer0
-	T0IF = CLEAR;                        //Clear Timer0 Overflow Interrupt Flag
-	T0IE = SET;                          //Timer0 Overflow Interrupt Enabled
+	TMR0 = 0;                        	//Clear Timer0
+	T0IF = 0;                        	//Clear Timer0 Overflow Interrupt Flag
+	T0IE = 1;                          	//Timer0 Overflow Interrupt Enabled
 	//TMR1L = 0;
 	//TMR1H = 0;
 	//T1CON = 0x35;						// Timer1 enabled, PS=3
@@ -67,7 +92,7 @@ void main()
 	{	
 		if (servo_state == 1)
 		{
-			if (TMR0 >= ontime) GPIOCLR(0xFD);
+			if (TMR0 >= ontime) GPIOCLR(SERVO);
 		} 
 					
 		if ((ADCON0 & 0x02) == 0)
@@ -76,16 +101,6 @@ void main()
 			offtime = 255-ontime;
 			ADCON0 = AN_START;
 		} 
-
-/*
-		value = GPIO;		
-		if (value & 0x08)
-		{
-			GPIOSET(0x20);
-		} else {
-		    GPIOCLR(0xDF);
-		}
-*/
 	}
 }
 
@@ -103,11 +118,11 @@ void interrupt Isr()
 	    if (servo_state >= MAX_SERVO_STATE) 
 	    {
 	    	servo_state = 0;
-	    	GPIOSET(2);
+	    	GPIOSET(SERVO);
 	    }
 	    else if (servo_state == 2) 
 	    {
-	        GPIOCLR(0xFD);
+	        GPIOCLR(SERVO);
 	    }
 
 		T0IF = 0;                     //Clear Timer0 Interrupt Flag
@@ -120,10 +135,10 @@ void interrupt Isr()
 	    {
 		    if (gpio5on)
     		{
-			    GPIOCLR(0xDF);
+			    GPIOCLR(LED);
 			    gpio5on = 0;
 			} else {
-		    	GPIOSET(0x20);
+		    	GPIOSET(LED);
 		    	gpio5on = 1;
 			}
 		}

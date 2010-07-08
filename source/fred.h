@@ -33,56 +33,22 @@ __CONFIG(INTIO & WDTDIS & MCLRDIS & BORDIS & UNPROTECT & PWRTEN);
 
 //Defines
 
-#define	LED1TRIS	0b11001111
-#define	LED2TRIS	0b11001111
-#define	LED3TRIS	0b11101011
-#define	LED4TRIS	0b11101011
-#define	LED5TRIS	0b11011011
-#define	LED6TRIS	0b11011011
-#define	LED7TRIS	0b11111001
-#define	LED8TRIS	0b11111001
-#define LED1ON		0b00010000
-#define	LED2ON		0b00100000
-#define	LED3ON		0b00010000
-#define	LED4ON		0b00000100
-#define	LED5ON		0b00100000
-#define	LED6ON		0b00000100
-#define	LED7ON		0b00000100
-#define	LED8ON		0b00000010
 #define	PUSHBUTTON	 	GPIO3		//GP3 - Pushbutton Input
-#define	DEBOUNCEDELAY	200		    //Debounce Delay Constant
-#define	OPEN			1
-#define	CLOSED			0
 #define	SET				1
 #define	CLEAR			0
-#define	FIRSTSTATE		0
-#define LASTSTATE		7
-#define	TRUE			1
-#define	FALSE			0
-#define FORWARD			0
 
 #define AN_START 		0x0F
 
 //Global Variable Declarations
-unsigned char inner,outer;
 unsigned char ontime;
 unsigned char offtime;
 unsigned char led1on;
+unsigned char gpio_state;
 unsigned char value;
-#define MAX_SERVO_STATE 20
+#define MAX_SERVO_STATE 15
 unsigned char servo_state;
 
-//Function Prototypes
-void Init();
-void Led1();
-void Led2();
-void Led3();
-void Led4();
-void Led5();
-void Led6();
-void Led7();
-void Led8();
-void Delay(char value);
-void Display();
+#define GPIOSET(v) gpio_state|=v; GPIO=gpio_state
+#define GPIOCLR(v) gpio_state&=v; GPIO=gpio_state
 
 #endif

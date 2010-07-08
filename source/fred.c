@@ -44,6 +44,16 @@ unsigned char value;
 unsigned char servo_state;
 unsigned char gpio5on;
 
+union
+{
+    struct
+    {
+        unsigned char upper;
+        unsigned char lower;
+    } pieces;
+    unsigned int value;
+} t1;
+
 // ****************** macros to set/clear GPIO *****************
 // setting individual bits doesn't seem to work
 #define GPIOSET(v) gpio_state|=v; GPIO=gpio_state
@@ -89,12 +99,12 @@ void main()
 	//************* Init Done *******************
 		
 	while(1)                            //Loop Forever
-	{	
-		if (servo_state == 1)
+	{
+		// compiler bug: program doesn't work without this NOOP
+		if (servo_state)
 		{
-			if (TMR0 >= ontime) GPIOCLR(SERVO);
-		} 
-					
+		}
+		
 		if ((ADCON0 & 0x02) == 0)
 		{
 			ontime = ADRESH;
@@ -104,7 +114,9 @@ void main()
 	}
 }
 
-
+void read_t1()
+{
+    
 //***************************************************************************
 //Isr() - Interrupt Service Routine
 //      - Services Timer0 Overflow
@@ -120,6 +132,12 @@ void interrupt Isr()
 	    	servo_state = 0;
 	    	GPIOSET(SERVO);
 	    }
+	    
+	    else if (servo_state == 1)
+	    {
+	        TMR0 = ontime;
+	    }
+	    
 	    else if (servo_state == 2) 
 	    {
 	        GPIOCLR(SERVO);

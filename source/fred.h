@@ -37,7 +37,7 @@ __CONFIG(INTIO & WDTDIS & MCLRDIS & BORDIS & UNPROTECT & PWRTEN);
 #define	SET				1
 #define	CLEAR			0
 
-#define AN_START 		0x0F
+#define AN_START 		0x03 /* 0x0F */
 
 //Global Variable Declarations
 unsigned char ontime;
@@ -47,6 +47,7 @@ unsigned char gpio_state;
 unsigned char value;
 #define MAX_SERVO_STATE 15
 unsigned char servo_state;
+unsigned char gpio5on;
 
 #define GPIOSET(v) gpio_state|=v; GPIO=gpio_state
 #define GPIOCLR(v) gpio_state&=v; GPIO=gpio_state

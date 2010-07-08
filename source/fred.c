@@ -38,25 +38,29 @@ void main()
 	//WPU = 0x04;							// pull up RA2
 	OPTION = 0xC1;       				// int edge on rising;
 	                                    // pull ups disabled, prescaler = 1
-	ANSEL = 0x39;						 //RA4 Analog Input
+	ANSEL = 0x39;						 //RA0, RA3 Analog Input
 	ADCON0 = AN_START;
 	
 	TMR0 = CLEAR;                        //Clear Timer0
 	T0IF = CLEAR;                        //Clear Timer0 Overflow Interrupt Flag
 	T0IE = SET;                          //Timer0 Overflow Interrupt Enabled
-	TMR1L = 0;
-	TMR1H = 0;
-	T1CON = 0x35;						// Timer1 enabled, PS=3
+	//TMR1L = 0;
+	//TMR1H = 0;
+	//T1CON = 0x35;						// Timer1 enabled, PS=3
 	//TMR1IE = 1;
-	//IOC = 0x04;							// interrupt on RA2 change
-	INTF = 0;							// clear interrupt flag
+	//IOC = 0x04;						// interrupt on RA2 change
+	IOCB3 = 1;
+	//INTF = 0;							// clear interrupt flag
 	//INTE = 1;							// external interrupt enable
 	PEIE = 1;
+	GPIE = 1;
 	GIE = 1;
 	
 	TRISIO = 0xDD;						// RA0 is input for POT; 
 	                                    // RA1 is output for servo
-	                                    // RA5 is output for debut LED
+	                                    // RA2 is input for TACH
+	                                    // RA4 is input for POT
+	                                    // RA5 is output for debug LED
 	//************* Init Done *******************
 		
 	while(1)                            //Loop Forever
@@ -73,13 +77,15 @@ void main()
 			ADCON0 = AN_START;
 		} 
 
+/*
 		value = GPIO;		
-		if (value & 0x04)
+		if (value & 0x08)
 		{
 			GPIOSET(0x20);
 		} else {
 		    GPIOCLR(0xDF);
 		}
+*/
 	}
 }
 
@@ -93,34 +99,37 @@ void interrupt Isr()
 {
 	if (T0IF)			  //If A Timer0 Interrupt,  Then
 	{
+	    servo_state++;
 	    if (servo_state >= MAX_SERVO_STATE) 
 	    {
 	    	servo_state = 0;
 	    	GPIOSET(2);
 	    }
-	    else 
+	    else if (servo_state == 2) 
 	    {
-		    servo_state++;
-		    if (servo_state == 2) GPIOCLR(0xFD);
-		}
-		
+	        GPIOCLR(0xFD);
+	    }
+
 		T0IF = 0;                     //Clear Timer0 Interrupt Flag
 	}
 
-	if (INTF)
+	if (GPIF)
 	{
-/*
-		if (gpio5on)
-		{
-		    GPIO5 = 0;
-		    gpio5on = 0;
-		} else {
-		    GPIO5 = 1;
-		    gpio5on = 1;
+	    gpio_state = GPIO;
+	    if (gpio_state & 0x08)
+	    {
+		    if (gpio5on)
+    		{
+			    GPIOCLR(0xDF);
+			    gpio5on = 0;
+			} else {
+		    	GPIOSET(0x20);
+		    	gpio5on = 1;
+			}
 		}
-*/
-		INTF = 0;
+		GPIF = 0;
 	}
+
 
 	return;
 }

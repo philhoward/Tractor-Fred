@@ -34,7 +34,11 @@ __CONFIG(INTIO & WDTDIS & MCLRDIS & BORDIS & UNPROTECT & PWRTEN);
 #define AN_START 		0x03 /* 0x0F */
 #define SERVO			0x02 /* GPIO1 */
 #define LED				0x20 /* GPIO5 */
-
+#define TACH			0x08 /* GPIO3 */
+#define DEBUG           0x04 /* GPIO2 */
+#define T1_THRESH		200
+#define T1_ON			0x05 /* prescale = 0 */
+#define T1_OFF			0x04 
 
 //****************** variables *******************************
 unsigned char ontime;
@@ -79,9 +83,9 @@ void main()
 	TMR0 = 0;                        	//Clear Timer0
 	T0IF = 0;                        	//Clear Timer0 Overflow Interrupt Flag
 	T0IE = 1;                          	//Timer0 Overflow Interrupt Enabled
-	//TMR1L = 0;
-	//TMR1H = 0;
-	//T1CON = 0x35;						// Timer1 enabled, PS=3
+	TMR1L = 0;
+	TMR1H = 0;
+	T1CON = T1_ON;						// Timer1 enabled, PS=0
 	//TMR1IE = 1;
 	//IOC = 0x04;						// interrupt on RA2 change
 	IOCB3 = 1;
@@ -91,9 +95,10 @@ void main()
 	GPIE = 1;
 	GIE = 1;
 	
-	TRISIO = 0xDD;						// RA0 is input for POT; 
+	TRISIO = 0xD9;						// //RA0 is input for POT; 
 	                                    // RA1 is output for servo
-	                                    // RA2 is input for TACH
+	                                    // RA2 is output for debug
+	                                    // RA3 is input for TACH
 	                                    // RA4 is input for POT
 	                                    // RA5 is output for debug LED
 	//************* Init Done *******************
@@ -111,12 +116,39 @@ void main()
 			offtime = 255-ontime;
 			ADCON0 = AN_START;
 		} 
+
+	    value = TMR1H;
+	    if (value & 0x01)
+	    {
+		    //if (gpio5on)
+    		//{
+			    GPIOCLR(DEBUG);
+			    //gpio5on = 0;
+			//}
+		} else {//if (!gpio5on) {
+		   	GPIOSET(DEBUG);
+		   	//gpio5on = 1;
+		}
+	
+	    if (t1.value > T1_THRESH)
+    	{
+		    GPIOCLR(LED);
+		} else {
+	    	GPIOSET(LED);
+		}
 	}
 }
 
-void read_t1()
+void read_and_clear_t1()
 {
-    
+	T1CON = T1_OFF;
+    t1.pieces.lower = TMR1L;
+    t1.pieces.upper = TMR1H;
+	TMR1L = 0;
+	TMR1H = 0;
+    T1CON = T1_ON;
+}
+  
 //***************************************************************************
 //Isr() - Interrupt Service Routine
 //      - Services Timer0 Overflow
@@ -148,18 +180,13 @@ void interrupt Isr()
 
 	if (GPIF)
 	{
+	
 	    gpio_state = GPIO;
-	    if (gpio_state & 0x08)
+	    if (gpio_state & TACH)
 	    {
-		    if (gpio5on)
-    		{
-			    GPIOCLR(LED);
-			    gpio5on = 0;
-			} else {
-		    	GPIOSET(LED);
-		    	gpio5on = 1;
-			}
+	    	read_and_clear_t1();
 		}
+		
 		GPIF = 0;
 	}
 

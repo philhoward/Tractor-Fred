@@ -33,9 +33,9 @@ __CONFIG(INTIO & WDTDIS & MCLRDIS & BORDIS & UNPROTECT & PWRTEN);
 #define MAX_SERVO_STATE 15
 #define AN_START 		0x03 /* 0x0F */
 #define SERVO			0x02 /* GPIO1 */
-#define LED				0x20 /* GPIO5 */
-#define TACH			0x08 /* GPIO3 */
-#define DEBUG           0x04 /* GPIO2 */
+#define LED				0x08 /* GPIO5 */
+#define TACH			0x04 /* GPIO2 */
+#define DEBUG           0x20 /* GPIO3 */
 #define T1_THRESH		200
 #define T1_ON			0x05 /* prescale = 0 */
 #define T1_OFF			0x04 
@@ -78,7 +78,7 @@ void main()
 	//WPU = 0x04;							// pull up RA2
 	OPTION = 0xC1;       				// int edge on rising;
 	                                    // pull ups disabled, prescaler = 1
-	ANSEL = 0x39;						 //RA0, RA3 Analog Input
+	ANSEL = 0x33;						 //RA0, RA2 Analog Input
 	ADCON0 = AN_START;
 	
 	TMR0 = 0;                        	//Clear Timer0
@@ -89,17 +89,18 @@ void main()
 	T1CON = T1_ON;						// Timer1 enabled, PS=0
 	//TMR1IE = 1;
 	//IOC = 0x04;						// interrupt on RA2 change
-	IOCB3 = 1;
+	IOCB = TACH;
 	//INTF = 0;							// clear interrupt flag
 	//INTE = 1;							// external interrupt enable
 	PEIE = 1;
 	GPIE = 1;
 	GIE = 1;
 	
-	TRISIO = 0xD9;						// //RA0 is input for POT; 
+	TRISIO = 0xFF & ~(LED | DEBUG | SERVO); // 0xD5;
+										// RA0 is input for POT; 
 	                                    // RA1 is output for servo
-	                                    // RA2 is output for debug
-	                                    // RA3 is input for TACH
+	                                    // RA3 is output for debug
+	                                    // RA2 is input for TACH
 	                                    // RA4 is input for POT
 	                                    // RA5 is output for debug LED
 	//************* Init Done *******************
@@ -121,14 +122,9 @@ void main()
 	    value = TMR1H;
 	    if (value & 0x01)
 	    {
-		    //if (gpio5on)
-    		//{
-			    GPIOCLR(DEBUG);
-			    //gpio5on = 0;
-			//}
-		} else {//if (!gpio5on) {
+		    GPIOCLR(DEBUG);
+		} else {
 		   	GPIOSET(DEBUG);
-		   	//gpio5on = 1;
 		}
 	
 	    if (t1.value > T1_THRESH)

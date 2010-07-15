@@ -47,6 +47,7 @@ unsigned char gpio_state;
 unsigned char value;
 unsigned char servo_state;
 unsigned char gpio5on;
+unsigned char intreg;
 
 union
 {
@@ -156,7 +157,7 @@ void read_and_clear_t1()
 //***************************************************************************
 void interrupt Isr()
 {
-	if (T0IF)			  //If A Timer0 Interrupt,  Then
+	if (T0IF)			  // T0IF //If A Timer0 Interrupt,  Then
 	{
 	    servo_state++;
 	    if (servo_state >= MAX_SERVO_STATE) 
@@ -177,8 +178,8 @@ void interrupt Isr()
 
 		T0IF = 0;                     //Clear Timer0 Interrupt Flag
 	}
-
-	if (GPIF)
+	
+	if (GPIF)	// GPIF
 	{
 	
 	    gpio_state = GPIO;
@@ -189,7 +190,6 @@ void interrupt Isr()
 		
 		GPIF = 0;
 	}
-
 
 	return;
 }

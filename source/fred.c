@@ -88,12 +88,11 @@ void main()
 	TMR1H = 0;
 	T1CON = T1_ON;						// Timer1 enabled, PS=0
 	//TMR1IE = 1;
-	//IOC = 0x04;						// interrupt on RA2 change
-	IOCB = TACH;
-	//INTF = 0;							// clear interrupt flag
-	//INTE = 1;							// external interrupt enable
+	//IOCB = TACH;
+	INTF = 0;							// clear interrupt flag
+	INTE = 1;							// external interrupt enable
 	PEIE = 1;
-	GPIE = 1;
+	//GPIE = 1;
 	GIE = 1;
 	
 	TRISIO = 0xFF & ~(LED | DEBUG | SERVO); // 0xD5;
@@ -174,10 +173,16 @@ void interrupt Isr()
 
 		T0IF = 0;                     //Clear Timer0 Interrupt Flag
 	}
+
+	if (INTF)
+	{
+		read_and_clear_t1();
+		INTF = 0;
+	}
 	
+#ifdef REMOVE
 	if (GPIF)	// GPIF
 	{
-	
 	    gpio_state = GPIO;
 	    if (gpio_state & TACH)
 	    {
@@ -186,6 +191,7 @@ void interrupt Isr()
 		
 		GPIF = 0;
 	}
+#endif
 
 	return;
 }

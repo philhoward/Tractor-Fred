@@ -35,11 +35,15 @@ __CONFIG(INTIO & WDTDIS & MCLRDIS & BORDIS & UNPROTECT & PWRTEN);
 #define MODE_MIN_STATES 255
 
 #define AN_START 		0x03 /* 0x0F */
-#define SERVO			0x02 /* GPIO1 */
-#define LED				0x20 /* GPIO5 */
-#define TACH			0x04 /* GPIO2 */
-#define BUTTON          0x08 /* GPIO3 */
-#define T1_THRESH		200
+#define SERVO			GPIO1
+#define LED				GPIO5
+#define TACH			GPIO2
+#define BUTTON          GPIO3
+#define xSERVO			0x02 /* GPIO1 */
+#define xLED			0x20 /* GPIO5 */
+#define xTACH			0x04 /* GPIO2 */
+#define xBUTTON         0x08 /* GPIO3 */
+
 #define T1_ON			0x05 /* prescale = 0 */
 #define T1_OFF			0x04 
 
@@ -47,24 +51,24 @@ __CONFIG(INTIO & WDTDIS & MCLRDIS & BORDIS & UNPROTECT & PWRTEN);
 #define MODE_GET_MIN	1
 #define MODE_NO_PULSE	2
 #define MODE_PULSE		3
+#define MODE_TEST		4
 
 //****************** variables *******************************
 unsigned char servo_time;
-unsigned char gpio_state;
-unsigned char value;
+unsigned char max_servo_states;
 unsigned char servo_state;
-unsigned char ledon;
-unsigned int  max_speed;
-unsigned int  min_speed;
+
 unsigned int  speed_diff;
 unsigned int  speed_max;
 unsigned int speed_scale;
 unsigned int speed_offset;
 unsigned int speed;
+
 unsigned char mode;
-unsigned char max_servo_states;
+
 bit new_time;
 bit speed_mult;
+bit new_speed;
 
 union
 {
@@ -78,8 +82,8 @@ union
 
 // ****************** macros to set/clear GPIO *****************
 // setting individual bits doesn't seem to work
-#define GPIOSET(v) gpio_state|=v; GPIO=gpio_state
-#define GPIOCLR(v) gpio_state&=(~v); GPIO=gpio_state
+#define GPIOSET(v) v = 1
+#define GPIOCLR(v) v = 0
 
 //***************************************************************************
 //Main() - Main Routine
@@ -113,11 +117,12 @@ void main()
 	//GPIE = 1;
 	GIE = 1;
 	
-	TRISIO = 0xFF & ~(LED | SERVO);
+	TRISIO = 0xFF & ~(xLED | xSERVO);
 	//************* Init Done *******************
 	mode = MODE_GET_MAX;
 	max_servo_states = MODE_MAX_STATES;
-		
+	
+	mode = MODE_TEST;
 	while(1)                            //Loop Forever
 	{
 		switch (mode)
@@ -130,20 +135,19 @@ void main()
 					GPIOSET(LED);
 				}
 				
-				value = GPIO;
-				if (value & BUTTON)
+				if (BUTTON)
 				{
 					if (new_time)
 					{
-						if (max_speed == 0) {
-							max_speed = t1.value;
+						if (speed_offset == 0) {
+							speed_offset = t1.value;
 						} else {
-							max_speed += t1.value;
-							max_speed /= 2;
+							speed_offset += t1.value;
+							speed_offset /= 2;
 						}
 						new_time = 0;
 					}
-				} else if (max_speed != 0) {
+				} else if (speed_offset != 0) {
 					mode = MODE_GET_MIN;
 					max_servo_states = MODE_MIN_STATES;
 				}
@@ -156,35 +160,75 @@ void main()
 					GPIOSET(LED);
 				}
 				
-				value = GPIO;
-				if (value & BUTTON)
+				if (BUTTON)
 				{
 					if (new_time)
 					{
-						if (min_speed == 0) {
-							min_speed = t1.value;
+						if (speed_max == 0) {
+							speed_max = t1.value;
 						} else {
-							min_speed += t1.value;
-							min_speed /= 2;
+							speed_max += t1.value;
+							speed_max /= 2;
 						}
 						new_time = 0;
 					}
-				} else if (min_speed != 0) {
+				} else if (speed_max != 0) {
 					mode = MODE_PULSE;
 					max_servo_states = MAX_SERVO_STATES;
-					speed_offset = max_speed;
-					speed_max = min_speed;
-					speed_diff = min_speed - max_speed;
+					speed_diff = speed_max - speed_offset;
 					if (speed_diff < 256) 
 					{
-						speed_scale = 256/speed_diff;
+						speed_scale = 256 / speed_diff;
 						speed_mult = 1;
 					} else {
-						speed_scale = speed_diff/256;
+						speed_scale = speed_diff / 256;
 						speed_mult = 0;
 					}
 				}
 				break;
+			case MODE_PULSE:
+				if (new_speed)
+				{
+					if (speed < speed_offset)
+					{
+					      speed = speed_offset;
+					}
+					
+					if (speed > speed_max+speed_offset)
+					{
+						speed = speed_max+speed_offset;
+					}
+			
+					speed -= speed_offset;
+					
+					if (speed_mult)
+					{
+						speed *= speed_scale;
+					} else {
+						speed /= speed_scale;		}
+			
+					servo_time = speed;
+					
+					new_speed = 0;
+				}
+				break;
+			case MODE_NO_PULSE:
+				if (servo_state < servo_time)
+				{
+					GPIOSET(LED);
+				} else {
+					GPIOCLR(LED);
+				}
+				break;
+			case MODE_TEST:
+				if (TMR1H & 0x01)
+				{
+					LED = 1;
+				} else {
+					LED = 0;
+				}
+				break;
+				
 		}
 		
 		if ((ADCON0 & 0x02) == 0)
@@ -216,62 +260,36 @@ void read_and_clear_t1()
 //***************************************************************************
 void interrupt Isr()
 {
-	if (T0IF)			  // T0IF //If A Timer0 Interrupt,  Then
+	if (T0IF)
 	{
 	    servo_state++;
 	    if (servo_state >= max_servo_states) 
 	    {
 	    	servo_state = 0;
 	    	GPIOSET(SERVO);
-	    }
-	    
+	    }    
 	    else if (servo_state == 1)
 	    {
 	        TMR0 = servo_time;
-	    }
-	    
+	    }	    
 	    else if (servo_state == 2) 
 	    {
 	        GPIOCLR(SERVO);
 	    }
 
-		T0IF = 0;                     //Clear Timer0 Interrupt Flag
+		T0IF = 0;
 	}
 
 	if (INTF)
 	{
 		read_and_clear_t1();
-		speed = t1.value;
-		if (speed > speed_max)
-		{
-			speed = speed_max;
+		
+		if (!new_speed)
+		{		
+			speed = t1.value;
+			new_speed = 1;
 		}
 		
-		if (speed < speed_offset)
-		{
-			speed = 0;
-		} else {
-			speed -= speed_offset;
-		}
-		
-		if (speed_mult)
-		{
-			speed *= speed_scale;
-		} else {
-			speed /= speed_scale;
-		}
-
-		servo_time = speed;
-		
-		if (ledon)
-		{
-		    GPIOCLR(LED);
-		    ledon = 0;
-		} else {
-		   	GPIOSET(LED);
-		   	ledon = 1;
-		}
-
 		INTF = 0;
 	}
 

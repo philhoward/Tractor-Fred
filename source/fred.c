@@ -24,10 +24,16 @@ THE SOFTWARE.
 
 #include <pic.h>
 #include <pic12f6x.h>
+//#include <htc.h>
+extern void eeprom_write(unsigned char addr, unsigned char value);
+extern unsigned char eeprom_read(unsigned char addr);
 
 // ***************** Processor Init ****************************************
 __IDLOC(1);
 __CONFIG(INTIO & WDTDIS & MCLRDIS & BORDIS & UNPROTECT & PWRTEN);
+//__EEPROM_DATA(a,b,c,d,e,f,g,h);
+#define EEPROM_SPEED_OFFSET 0
+#define EEPROM_SPEED_MAX 2
 
 // ********************* constants ***************************
 #define MAX_SERVO_STATES 15
@@ -60,9 +66,9 @@ unsigned char servo_state;
 
 unsigned int  speed_diff;
 unsigned int  speed_max;
-unsigned int speed_scale;
-unsigned int speed_offset;
-unsigned int speed;
+unsigned int  speed_scale;
+unsigned int  speed_offset;
+unsigned int  speed;
 
 unsigned char mode;
 
@@ -70,21 +76,51 @@ bit new_time;
 bit speed_mult;
 bit new_speed;
 
-union
+union 
 {
     struct
     {
-        unsigned char upper;
         unsigned char lower;
+        unsigned char upper;
     } pieces;
     unsigned int value;
-} t1;
+} t1, word;
 
 // ****************** macros to set/clear GPIO *****************
 // setting individual bits doesn't seem to work
 #define GPIOSET(v) v = 1
 #define GPIOCLR(v) v = 0
 
+
+//***************************************************************************
+unsigned int read_word(unsigned char addr)
+{
+//eeprom_write(address, value);
+	word.pieces.lower = eeprom_read(addr);
+	word.pieces.upper = eeprom_read(addr+1);
+	
+	return word.value;
+}
+//***************************************************************************
+void write_word(unsigned char addr, unsigned int value)
+{
+	word.value = value;
+	(void)eeprom_write(addr, word.pieces.lower);
+	(void)eeprom_write(addr+1, word.pieces.upper);
+}
+//***************************************************************************
+void compute_params()
+{
+	speed_diff = speed_max - speed_offset;
+	if (speed_diff < 256) 
+	{
+		speed_scale = 256 / speed_diff;
+		speed_mult = 1;
+	} else {
+		speed_scale = speed_diff / 256;
+		speed_mult = 0;
+	}
+}
 //***************************************************************************
 //Main() - Main Routine
 //***************************************************************************
@@ -119,10 +155,18 @@ void main()
 	
 	TRISIO = 0xFF & ~(xLED | xSERVO);
 	//************* Init Done *******************
-	mode = MODE_GET_MAX;
-	max_servo_states = MODE_MAX_STATES;
-	
-	mode = MODE_TEST;
+	speed_offset = read_word(EEPROM_SPEED_OFFSET);
+	speed_max = read_word(EEPROM_SPEED_MAX);
+	if (speed_offset != 0xFFFF && speed_max != 0xFFFF)
+	{
+		compute_params();
+		mode = MODE_NO_PULSE;
+		max_servo_states = MAX_SERVO_STATES;
+	} else {
+		mode = MODE_GET_MAX;
+		max_servo_states = MODE_MAX_STATES;
+	}	
+
 	while(1)                            //Loop Forever
 	{
 		switch (mode)
@@ -175,15 +219,11 @@ void main()
 				} else if (speed_max != 0) {
 					mode = MODE_PULSE;
 					max_servo_states = MAX_SERVO_STATES;
-					speed_diff = speed_max - speed_offset;
-					if (speed_diff < 256) 
-					{
-						speed_scale = 256 / speed_diff;
-						speed_mult = 1;
-					} else {
-						speed_scale = speed_diff / 256;
-						speed_mult = 0;
-					}
+					compute_params();
+					GPIE = 0;		// disable interrupts to write EEPROM
+					write_word(EEPROM_SPEED_OFFSET, speed_offset);
+					write_word(EEPROM_SPEED_MAX, speed_max);
+					GPIE = 1;		// re-enable interrupts
 				}
 				break;
 			case MODE_PULSE:
@@ -245,12 +285,14 @@ void main()
 void read_and_clear_t1()
 {
 	T1CON = T1_OFF;
+
     t1.pieces.lower = TMR1L;
     t1.pieces.upper = TMR1H;
 	TMR1L = 0;
 	TMR1H = 0;
     T1CON = T1_ON;
     new_time = 1;
+    t1.value = 5;
 }
   
 //***************************************************************************

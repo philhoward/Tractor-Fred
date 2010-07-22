@@ -100,9 +100,16 @@ unsigned char read_eeprom_byte(unsigned char addr)
 	{
 		continue;
 	}
+	CARRY=0;
+	if(GIE)CARRY=1;
+	GIE=0;
+
     EEADR=addr;
     RD=1;
     ee_value = EEDATA;
+
+	if(CARRY)GIE=1;
+
     return ee_value;
 }
 //***************************************************************************
@@ -124,8 +131,6 @@ void write_eeprom_byte(unsigned char addr, unsigned char value)
 	WR=1;
 	WREN=0;
 	if(CARRY)GIE=1;
-	
-
 }
 //***************************************************************************
 unsigned int read_word(unsigned char addr)
@@ -206,12 +211,15 @@ void main()
 	
 	TRISIO = 0xFF & ~(xLED | xSERVO);
 	//************* Init Done *******************
+	delay(100);
 	speed_offset = read_word(EEPROM_SPEED_OFFSET);
+	delay(100);
 	speed_max = read_word(EEPROM_SPEED_MAX);
+	delay(100);
 	if (speed_offset != 0xFFFF && speed_max != 0xFFFF)
 	{
 		compute_params();
-		mode = MODE_NO_PULSE;
+		mode = MODE_PULSE;
 		max_servo_states = MAX_SERVO_STATES;
 	} else {
 		mode = MODE_GET_MAX;
@@ -306,8 +314,10 @@ void main()
 					{
 						speed *= speed_scale;
 					} else {
-						speed /= speed_scale;		}
+						speed /= speed_scale;
+					}
 			
+					if (speed > 255) speed = 255;
 					servo_time = speed;
 					
 					new_speed = 0;

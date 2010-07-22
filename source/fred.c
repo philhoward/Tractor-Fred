@@ -72,6 +72,7 @@ unsigned int  speed_offset;
 unsigned int  speed;
 unsigned char ee_value;
 unsigned char mode;
+unsigned char tach_count;
 
 bit new_time;
 bit speed_mult;
@@ -213,9 +214,7 @@ void main()
 	//************* Init Done *******************
 	delay(100);
 	speed_offset = read_word(EEPROM_SPEED_OFFSET);
-	delay(100);
 	speed_max = read_word(EEPROM_SPEED_MAX);
-	delay(100);
 	if (speed_offset != 0xFFFF && speed_max != 0xFFFF)
 	{
 		compute_params();
@@ -321,14 +320,17 @@ void main()
 					servo_time = speed;
 					
 					new_speed = 0;
+				} else if (TMR1H & 0x80) {
+					mode = MODE_NO_PULSE;
+					tach_count = 0;
 				}
 				break;
 			case MODE_NO_PULSE:
-				if (servo_state < servo_time)
+				if (new_speed)
 				{
-					GPIOSET(LED);
-				} else {
-					GPIOCLR(LED);
+					new_speed = 1;
+					tach_count++;
+					if (tach_count == 0) mode = MODE_PULSE;
 				}
 				break;
 			case MODE_TEST:

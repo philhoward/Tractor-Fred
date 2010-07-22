@@ -22,16 +22,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#include <pic.h>
 #include <pic12f6x.h>
+#include <pic.h>
 //#include <htc.h>
-extern void eeprom_write(unsigned char addr, unsigned char value);
-extern unsigned char eeprom_read(unsigned char addr);
+//extern void eeprom_write(unsigned char addr, unsigned char value);
+//extern unsigned char eeprom_read(unsigned char addr);
 
 // ***************** Processor Init ****************************************
 __IDLOC(1);
 __CONFIG(INTIO & WDTDIS & MCLRDIS & BORDIS & UNPROTECT & PWRTEN);
-//__EEPROM_DATA(a,b,c,d,e,f,g,h);
+__EEPROM_DATA(0xEA, 0x00, 0xC2, 0x01, 0xAA, 0x55, 0xBA, 0xDD);
+
 #define EEPROM_SPEED_OFFSET 0
 #define EEPROM_SPEED_MAX 2
 
@@ -69,7 +70,7 @@ unsigned int  speed_max;
 unsigned int  speed_scale;
 unsigned int  speed_offset;
 unsigned int  speed;
-
+unsigned char ee_value;
 unsigned char mode;
 
 bit new_time;
@@ -93,11 +94,45 @@ union
 
 
 //***************************************************************************
+unsigned char read_eeprom_byte(unsigned char addr)
+{
+	while(WR)
+	{
+		continue;
+	}
+    EEADR=addr;
+    RD=1;
+    ee_value = EEDATA;
+    return ee_value;
+}
+//***************************************************************************
+void write_eeprom_byte(unsigned char addr, unsigned char value)
+{
+	while(WR)
+	{
+		continue;
+	}
+	
+	EEADR=addr;
+	EEDATA=value;
+	CARRY=0;
+	if(GIE)CARRY=1;
+	GIE=0;
+	WREN=1;
+	EECON2=0x55;
+	EECON2=0xAA;
+	WR=1;
+	WREN=0;
+	if(CARRY)GIE=1;
+	
+
+}
+//***************************************************************************
 unsigned int read_word(unsigned char addr)
 {
 //eeprom_write(address, value);
-	word.pieces.lower = eeprom_read(addr);
-	word.pieces.upper = eeprom_read(addr+1);
+	word.pieces.lower = read_eeprom_byte(addr);
+	word.pieces.upper = read_eeprom_byte(addr+1);
 	
 	return word.value;
 }
@@ -105,8 +140,8 @@ unsigned int read_word(unsigned char addr)
 void write_word(unsigned char addr, unsigned int value)
 {
 	word.value = value;
-	(void)eeprom_write(addr, word.pieces.lower);
-	(void)eeprom_write(addr+1, word.pieces.upper);
+	write_eeprom_byte(addr, word.pieces.lower);
+	write_eeprom_byte(addr+1, word.pieces.upper);
 }
 //***************************************************************************
 void compute_params()
@@ -120,6 +155,22 @@ void compute_params()
 		speed_scale = speed_diff / 256;
 		speed_mult = 0;
 	}
+}
+//***************************************************************************
+//delay(value) - Delay Routine
+//             - Delay=value*2.3ms (When OSC=4MHZ)
+//***************************************************************************
+unsigned char outer, inner;
+void delay(char value)                    
+{
+	for (outer=value; outer != 0; outer--)	 
+	{
+		for (inner=0xFF; inner != 0; inner--)
+		{
+	  
+		}
+	}
+	return;
 }
 //***************************************************************************
 //Main() - Main Routine
@@ -167,6 +218,8 @@ void main()
 		max_servo_states = MODE_MAX_STATES;
 	}	
 
+	new_speed = 0;
+	
 	while(1)                            //Loop Forever
 	{
 		switch (mode)
@@ -181,19 +234,24 @@ void main()
 				
 				if (BUTTON)
 				{
-					if (new_time)
+					if (new_speed)
 					{
 						if (speed_offset == 0) {
-							speed_offset = t1.value;
+							speed_offset = speed;
 						} else {
-							speed_offset += t1.value;
+							speed_offset += speed;
 							speed_offset /= 2;
 						}
-						new_time = 0;
+						new_speed = 0;
 					}
-				} else if (speed_offset != 0) {
-					mode = MODE_GET_MIN;
-					max_servo_states = MODE_MIN_STATES;
+				} else {
+					new_speed = 0;
+					if (speed_offset != 0) 
+					{
+						mode = MODE_GET_MIN;
+						max_servo_states = MODE_MIN_STATES;
+						delay(100);
+					}
 				}
 				break;
 			case MODE_GET_MIN:
@@ -206,24 +264,27 @@ void main()
 				
 				if (BUTTON)
 				{
-					if (new_time)
+					if (new_speed)
 					{
 						if (speed_max == 0) {
-							speed_max = t1.value;
+							speed_max = speed;
 						} else {
-							speed_max += t1.value;
+							speed_max += speed;
 							speed_max /= 2;
 						}
-						new_time = 0;
+						new_speed = 0;
 					}
-				} else if (speed_max != 0) {
-					mode = MODE_PULSE;
-					max_servo_states = MAX_SERVO_STATES;
-					compute_params();
-					GPIE = 0;		// disable interrupts to write EEPROM
-					write_word(EEPROM_SPEED_OFFSET, speed_offset);
-					write_word(EEPROM_SPEED_MAX, speed_max);
-					GPIE = 1;		// re-enable interrupts
+				} else {
+					new_speed = 0;
+					if (speed_max != 0) 
+					{
+						write_word(EEPROM_SPEED_OFFSET, speed_offset);
+						write_word(EEPROM_SPEED_MAX, speed_max);
+						mode = MODE_PULSE;
+						max_servo_states = MAX_SERVO_STATES;
+						compute_params();
+						delay(100);
+					}
 				}
 				break;
 			case MODE_PULSE:
@@ -292,7 +353,6 @@ void read_and_clear_t1()
 	TMR1H = 0;
     T1CON = T1_ON;
     new_time = 1;
-    t1.value = 5;
 }
   
 //***************************************************************************

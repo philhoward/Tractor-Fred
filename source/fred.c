@@ -328,9 +328,11 @@ void main()
 			case MODE_NO_PULSE:
 				if (new_speed)
 				{
-					new_speed = 1;
+					new_speed = 0;
 					tach_count++;
-					if (tach_count == 0) mode = MODE_PULSE;
+					if (tach_count > 200) mode = MODE_PULSE;
+				} else if (TMR1H & 0x80) {
+					tach_count = 0;
 				}
 				break;
 			case MODE_TEST:

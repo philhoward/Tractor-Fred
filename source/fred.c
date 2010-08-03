@@ -74,7 +74,6 @@ unsigned char ee_value;
 unsigned char mode;
 unsigned char tach_count;
 
-bit new_time;
 bit speed_mult;
 bit new_speed;
 
@@ -101,6 +100,8 @@ unsigned char read_eeprom_byte(unsigned char addr)
 	{
 		continue;
 	}
+
+	// use CARRY to remember state of Interrupt Enable
 	CARRY=0;
 	if(GIE)CARRY=1;
 	GIE=0;
@@ -109,6 +110,7 @@ unsigned char read_eeprom_byte(unsigned char addr)
     RD=1;
     ee_value = EEDATA;
 
+	// restore IE
 	if(CARRY)GIE=1;
 
     return ee_value;
@@ -121,22 +123,26 @@ void write_eeprom_byte(unsigned char addr, unsigned char value)
 		continue;
 	}
 	
-	EEADR=addr;
-	EEDATA=value;
+	// use CARRY to remember state of Interrupt Enable
 	CARRY=0;
 	if(GIE)CARRY=1;
 	GIE=0;
+
+	EEADR=addr;
+	EEDATA=value;
+
 	WREN=1;
 	EECON2=0x55;
 	EECON2=0xAA;
 	WR=1;
 	WREN=0;
+
+	// restore IE
 	if(CARRY)GIE=1;
 }
 //***************************************************************************
 unsigned int read_word(unsigned char addr)
 {
-//eeprom_write(address, value);
 	word.pieces.lower = read_eeprom_byte(addr);
 	word.pieces.upper = read_eeprom_byte(addr+1);
 	
@@ -356,23 +362,11 @@ void main()
 		} 
 	}
 }
-
-void read_and_clear_t1()
-{
-	T1CON = T1_OFF;
-
-    t1.pieces.lower = TMR1L;
-    t1.pieces.upper = TMR1H;
-	TMR1L = 0;
-	TMR1H = 0;
-    T1CON = T1_ON;
-    new_time = 1;
-}
-  
+ 
 //***************************************************************************
 //Isr() - Interrupt Service Routine
 //      - Services Timer0 Overflow
-//      - Services GP3 Pin Change
+//      - Services INT - external interrupt pin interrupt
 //***************************************************************************
 void interrupt Isr()
 {
@@ -398,7 +392,14 @@ void interrupt Isr()
 
 	if (INTF)
 	{
-		read_and_clear_t1();
+		// Stop timer, get value, restart timer
+		T1CON = T1_OFF;
+
+	    t1.pieces.lower = TMR1L;
+	    t1.pieces.upper = TMR1H;
+		TMR1L = 0;
+		TMR1H = 0;
+    	T1CON = T1_ON;
 		
 		if (!new_speed)
 		{		
